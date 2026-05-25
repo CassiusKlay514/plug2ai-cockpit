@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.local
+.DS_Store
+*.log
+
+# Données personnelles - JAMAIS commiter
+import_data.sql
+*.csv
+build_import_sql.py

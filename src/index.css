@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: #F2EBDC;
+  color: #0F1B2D;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* subtle paper grain — sparse dot field, same idiom as the architecture plate */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, #0F1B2D 0.4px, transparent 0.4px);
+  background-size: 14px 14px;
+  opacity: 0.045;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
