@@ -58,36 +58,22 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="min-h-screen text-ink">
-      {/* HEADER */}
-      <header className="border-b border-ink/30">
-        <div className="max-w-[1400px] mx-auto px-8 py-5 flex items-baseline justify-between">
-          <div className="flex items-baseline gap-6">
-            <div className="font-mono font-bold text-[15px] tracking-[0.35em]">P L U G 2 A I</div>
-            <div className="font-mono text-[11px] text-grey tracking-widest uppercase">cockpit · v.01</div>
-          </div>
-          <div className="font-serif italic text-[14px] text-grey">
-            «&nbsp;ce qui n'est pas mesuré ne peut être gouverné&nbsp;»
-          </div>
-        </div>
-      </header>
+    <main className="max-w-[1400px] mx-auto px-8 py-10 relative z-10">
 
-      <main className="max-w-[1400px] mx-auto px-8 py-10 relative z-10">
-
-        {/* PAGE TITLE */}
-        <div className="flex items-end justify-between mb-12">
-          <div>
-            <h1 className="font-title text-[68px] leading-none tracking-tight">
-              TABLEAU DE BORD
-            </h1>
-            <p className="font-serif italic text-[15px] text-ink2 mt-3">
-              état du pipeline · {kpis.total} contacts · {new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
-            </p>
-          </div>
-          <div className="font-mono text-[11px] uppercase tracking-widest text-grey">
-            Planche&nbsp;·&nbsp;Dashboard
-          </div>
+      {/* PAGE TITLE */}
+      <div className="flex items-end justify-between mb-12">
+        <div>
+          <h1 className="font-title text-[68px] leading-none tracking-tight">
+            RELATION CLIENTS
+          </h1>
+          <p className="font-serif italic text-[15px] text-ink2 mt-3">
+            module I · CRM · {kpis.total} contacts au pipeline
+          </p>
         </div>
+        <div className="font-mono text-[11px] uppercase tracking-widest text-grey">
+          Planche · CRM
+        </div>
+      </div>
 
         {/* KPI ROW */}
         <section className="grid grid-cols-4 gap-5 mb-12">
@@ -200,14 +186,14 @@ export default function Dashboard() {
           )}
         </section>
 
-        <footer className="mt-16 pt-4 border-t border-ink/30 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-widest text-grey">
-          <span>plug2ai · cockpit · v.01</span>
-          <span>jonathan gomez · {new Date().getFullYear()}</span>
-        </footer>
-      </main>
-    </div>
+      <footer className="mt-16 pt-4 border-t border-ink/30 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-widest text-grey">
+        <span>plug2ai · cockpit · crm · v.01</span>
+        <span>jonathan gomez · {new Date().getFullYear()}</span>
+      </footer>
+    </main>
   )
 }
+
 
 function FilterChip({ code, label, active, onClick, count }) {
   const m = code === 'TOUS' ? { label: 'Tous' } : statutMeta(code)
