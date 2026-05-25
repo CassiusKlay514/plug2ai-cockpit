@@ -1,12 +1,34 @@
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase.js'
 import useExecutiveData from '../lib/useExecutiveData.js'
 import { formatEur, formatEurShort, formatNumber, formatDate } from '../lib/format.js'
 import StatTile from '../components/StatTile.jsx'
 import SectionTitle from '../components/SectionTitle.jsx'
 import CxoCard from '../components/CxoCard.jsx'
 
+const MODULE_META = {
+  crm:    { roman: 'I',    nom: 'CRM',      color: 'text-ink' },
+  cfo:    { roman: 'II',   nom: 'CFO',      color: 'text-ink' },
+  cmo:    { roman: 'III',  nom: 'CMO',      color: 'text-ink' },
+  coo:    { roman: 'IV',   nom: 'COO',      color: 'text-ink' },
+  cto:    { roman: 'V',    nom: 'CTO',      color: 'text-ink' },
+  agenda: { roman: 'VI',   nom: 'Agenda',   color: 'text-ink' },
+  ceo:    { roman: 'VII',  nom: 'CEO',      color: 'text-ocre-d' },
+  veille: { roman: 'VIII', nom: 'Veille',   color: 'text-ocre-d' },
+  kb:     { roman: 'IX',   nom: 'KB',       color: 'text-ocre-d' },
+}
+
 export default function Home({ onNavigate }) {
   const { data, loading, error } = useExecutiveData()
   const s = data?.synth
+  const [activite, setActivite] = useState([])
+  useEffect(() => {
+    supabase.from('activite_hebdo')
+      .select('*')
+      .order('date_event', { ascending: false })
+      .limit(40)
+      .then(({ data }) => setActivite(data ?? []))
+  }, [])
 
   // Stats étendues
   const contacts = data?.contacts ?? []
@@ -193,7 +215,72 @@ export default function Home({ onNavigate }) {
             }
             onClick={() => onNavigate('cto')}
           />
+          <CxoCard
+            roman="VII" code="CEO"
+            title="Stratégie"
+            tagline="OKR · décisions · roadmap"
+            headlineKind="info"
+            headline="5 OKRs Q3 actifs, 8 chantiers roadmap. Cap : doubler le CA et sortir de la dépendance Balmont. Journal de décisions à tenir hebdo."
+            onClick={() => onNavigate('ceo')}
+          />
+          <CxoCard
+            roman="VIII" code="VEILLE"
+            title="Veille IA"
+            tagline="AI Act · concurrence · annonces"
+            headlineKind="warn"
+            headline="5 alertes régulatoires et annonces produits suivies. Chaque article doit déclencher une action commerciale dans les 48h sur les segments régulés."
+            onClick={() => onNavigate('veille')}
+          />
+          <CxoCard
+            roman="IX" code="KB"
+            title="Connaissance"
+            tagline="agents · KB · postmortems"
+            headlineKind="success"
+            headline="5 agents IA documentés (3 en production), 4 knowledge bases, 2 postmortems. Le vrai capital de l'agence — packager 3 agents en offre produit Q3."
+            onClick={() => onNavigate('kb')}
+          />
         </div>
+      </section>
+
+      {/* ACTIVITÉ HEBDO */}
+      <section className="mb-12">
+        <div className="flex items-end justify-between mb-6 pb-3 border-b border-ink/30">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ocre-d mb-1">§ 02</div>
+            <h2 className="font-title text-[42px] leading-none">ACTIVITÉ HEBDOMADAIRE</h2>
+            <p className="font-serif italic text-[14px] text-grey mt-2">
+              tout ce qui a bougé dans la boîte ces 14 derniers jours, agrégé en temps réel
+            </p>
+          </div>
+          <div className="font-mono text-[10px] uppercase tracking-widest text-grey text-right">
+            {activite.length} événements
+          </div>
+        </div>
+
+        {activite.length === 0 && (
+          <div className="font-serif italic text-grey text-center py-12">aucune activité récente</div>
+        )}
+
+        {activite.length > 0 && (
+          <div className="space-y-1">
+            {activite.map((a, i) => {
+              const m = MODULE_META[a.module] ?? { roman: '·', nom: a.module, color: 'text-grey' }
+              return (
+                <button
+                  key={`${a.ref}_${i}`}
+                  onClick={() => onNavigate(a.module === 'kb' ? 'kb' : a.module)}
+                  className="w-full flex items-baseline gap-3 px-3 py-2 hover:bg-ink/5 border-b border-ink/10 text-left transition group"
+                >
+                  <span className={`font-title text-[14px] w-7 shrink-0 ${m.color}`}>{m.roman}</span>
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-grey w-16 shrink-0">{m.nom}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-ocre-d w-24 shrink-0">{a.type}</span>
+                  <span className="flex-1 truncate text-[13px] group-hover:text-ocre-d transition-colors">{a.titre}</span>
+                  <span className="font-mono text-[10px] text-grey shrink-0">{formatDate(a.date_event)}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <footer className="mt-20 pt-4 border-t border-ink/20 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-widest text-grey">
