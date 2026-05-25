@@ -6,6 +6,7 @@ export default function Header({ currentPage, onNavigate }) {
     { code: 'cmo',  roman: 'III', label: 'CMO' },
     { code: 'coo',  roman: 'IV',  label: 'COO' },
     { code: 'cto',  roman: 'V',   label: 'CTO' },
+    { code: 'agenda', roman: 'VI', label: 'Agenda' },
   ]
   return (
     <header className="border-b border-ink/20 bg-paper/85 backdrop-blur-sm sticky top-0 z-30">
