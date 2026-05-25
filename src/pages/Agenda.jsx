@@ -14,6 +14,26 @@ const TYPE_COLOR = {
   AUTRE: 'bg-grey-l text-ink',
 }
 
+async function syncFathom() {
+  // Trigger une edge function ou affiche un message
+  // Pour l'instant : indique à l'utilisateur ce qui va se passer
+  if (!window.confirm('Lancer la synchronisation Fathom ?\n\nLes nouvelles réunions et leurs action items seront importés dans le cockpit.')) return
+  try {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-fathom`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
+    return body
+  } catch (e) {
+    throw e
+  }
+}
+
 export default function Agenda() {
   const [reunions, setReunions] = useState([])
   const [taches, setTaches]     = useState([])
@@ -110,12 +130,30 @@ export default function Agenda() {
       <div className="flex items-end justify-between mb-12">
         <div>
           <p className="font-serif italic text-[15px] text-grey mb-3">
-            module VI · agenda · réunions · tâches par personne
+            module VI · agenda · points · tâches par personne
           </p>
           <h1 className="font-title text-[72px] leading-[0.92] tracking-tight">AGENDA</h1>
         </div>
-        <div className="font-mono text-[11px] uppercase tracking-widest text-grey">
-          Planche · Agenda
+        <div className="flex flex-col items-end gap-3">
+          <div className="font-mono text-[11px] uppercase tracking-widest text-grey">
+            Planche · Agenda
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                const r = await syncFathom()
+                if (r) {
+                  window.alert(`Synchronisation Fathom : ${r.imported ?? 0} nouveaux points importés.`)
+                  reload()
+                }
+              } catch (e) {
+                window.alert(`Sync impossible : ${e.message}\n\nLa fonction sync-fathom doit être déployée. Pour l'instant, lance le script Python /tmp/import_fathom.py manuellement.`)
+              }
+            }}
+            className="font-mono text-[11px] uppercase tracking-widest px-3 py-1.5 border border-ink/30 hover:border-ink hover:bg-ink/5 transition flex items-center gap-2"
+          >
+            <span className="text-ocre-d">↻</span> Sync Fathom
+          </button>
         </div>
       </div>
 
@@ -123,10 +161,10 @@ export default function Agenda() {
 
       {/* KPI */}
       <section className="grid grid-cols-4 gap-4 mb-12">
-        <StatTile roman="I"   label="Réunions"       value={stats.total}   sub={`${stats.client} client · ${stats.interne} interne`} accent />
+        <StatTile roman="I"   label="Points totaux"   value={stats.total}   sub={`${stats.client} client · ${stats.interne} interne`} accent />
         <StatTile roman="II"  label="Tâches actives"  value={stats.taFaire + stats.enCours} sub={`${stats.taFaire} à faire · ${stats.enCours} en cours`} />
         <StatTile roman="III" label="Tâches terminées" value={stats.terminees} sub="historique cumulé" />
-        <StatTile roman="IV"  label="Personnes"        value={assignees.length} sub="assignees distincts" />
+        <StatTile roman="IV"  label="Huis clos Jo+Espoir" value={reunions.filter(r => r.huis_clos).length} sub={`${taches.filter(t => t.huis_clos).length} tâches associées`} />
       </section>
 
       {/* AGENDA */}
@@ -160,7 +198,10 @@ export default function Agenda() {
                 {items.map(r => (
                   <button key={r.id}
                     onClick={() => setDrawer({ open: true, meeting: r })}
-                    className="w-full flex items-start gap-4 p-3 border border-ink/15 hover:border-ink hover:bg-ink/5 text-left transition group">
+                    className={`w-full flex items-start gap-4 p-3 border text-left transition group
+                      ${r.huis_clos
+                        ? 'border-ocre/60 bg-ocre/5 hover:border-ocre hover:bg-ocre/10'
+                        : 'border-ink/15 hover:border-ink hover:bg-ink/5'}`}>
                     <div className="shrink-0 text-center w-14">
                       <div className="font-title text-[24px] leading-none">
                         {new Date(r.date_event).getDate()}
@@ -170,10 +211,15 @@ export default function Agenda() {
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className={`font-mono text-[9px] uppercase tracking-widest px-1.5 py-[1px] ${TYPE_COLOR[r.type_reunion]}`}>
                           {r.type_reunion}
                         </span>
+                        {r.huis_clos && (
+                          <span className="font-mono text-[9px] uppercase tracking-widest bg-ocre text-ink px-1.5 py-[1px]">
+                            Huis clos · Jo + Espoir
+                          </span>
+                        )}
                         <span className="font-mono text-[10px] text-grey">
                           {new Date(r.date_event).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                           {r.duree_minutes && ` · ${r.duree_minutes} min`}
@@ -237,7 +283,7 @@ export default function Agenda() {
               </div>
               <ul className="space-y-2">
                 {items.slice(0, 12).map(t => (
-                  <li key={t.id} className="flex items-start gap-2 group">
+                  <li key={t.id} className={`flex items-start gap-2 group ${t.huis_clos ? 'pl-2 border-l-2 border-ocre' : ''}`}>
                     <button
                       onClick={() => toggleTache(t)}
                       className={`shrink-0 mt-0.5 w-4 h-4 border ${t.statut === 'TERMINE' ? 'bg-ink border-ink' : 'border-ink/40 hover:border-ink'} flex items-center justify-center transition`}>
@@ -245,6 +291,9 @@ export default function Agenda() {
                     </button>
                     <div className={`flex-1 text-[13px] leading-snug ${t.statut === 'TERMINE' ? 'line-through text-grey' : 'text-ink'}`}>
                       {t.description}
+                      {t.huis_clos && (
+                        <span className="ml-1.5 font-mono text-[8px] uppercase tracking-widest text-ocre-d">· huis clos</span>
+                      )}
                     </div>
                     <button onClick={() => deleteTache(t)}
                       className="opacity-0 group-hover:opacity-100 font-mono text-[10px] text-rust hover:underline transition shrink-0"

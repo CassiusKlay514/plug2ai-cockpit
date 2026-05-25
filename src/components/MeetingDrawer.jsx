@@ -22,6 +22,18 @@ export default function MeetingDrawer({ meeting, open, onClose, onUpdated }) {
 
   if (!open || !meeting) return null
 
+  async function deleteMeeting() {
+    const n = taches.length
+    const msg = n > 0
+      ? `Supprimer définitivement ce point ?\n\n"${meeting.titre}"\n\nLes ${n} tâche${n>1?'s':''} associée${n>1?'s':''} ser${n>1?'ont':'a'} aussi supprimée${n>1?'s':''}.`
+      : `Supprimer définitivement ce point ?\n\n"${meeting.titre}"`
+    if (!window.confirm(msg)) return
+    const { error } = await supabase.from('reunions').delete().eq('id', meeting.id)
+    if (error) { window.alert('Erreur : ' + error.message); return }
+    onUpdated?.()
+    onClose?.()
+  }
+
   const md = (meeting.resume ?? '').toString()
   // Conversion markdown très simple en HTML lisible
   const htmlBlocks = md
@@ -75,10 +87,15 @@ export default function MeetingDrawer({ meeting, open, onClose, onUpdated }) {
       <aside className="w-[720px] bg-paper border-l border-ink shadow-2xl overflow-y-auto">
         <div className="p-6 border-b border-ink/20 sticky top-0 bg-paper z-10 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-3 mb-1 flex-wrap">
               <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ocre-d">
-                Réunion · {TYPE_LABEL[meeting.type_reunion]}
+                Point · {TYPE_LABEL[meeting.type_reunion]}
               </span>
+              {meeting.huis_clos && (
+                <span className="font-mono text-[9px] uppercase tracking-widest bg-ocre text-ink px-1.5 py-[1px]">
+                  Huis clos · Jo + Espoir
+                </span>
+              )}
               <span className="font-mono text-[10px] text-grey">{formatDate(meeting.date_event)}</span>
               {meeting.duree_minutes && (
                 <span className="font-mono text-[10px] text-grey">· {meeting.duree_minutes} min</span>
@@ -90,12 +107,18 @@ export default function MeetingDrawer({ meeting, open, onClose, onUpdated }) {
                 {meeting.participants}
               </div>
             )}
-            {meeting.recording_url && (
-              <a href={meeting.recording_url} target="_blank" rel="noreferrer"
-                 className="inline-block mt-2 font-mono text-[10px] uppercase tracking-widest text-ink border border-ink/30 px-2 py-1 hover:border-ink hover:bg-ink/5">
-                ↗ Replay Fathom
-              </a>
-            )}
+            <div className="flex items-center gap-2 mt-2">
+              {meeting.recording_url && (
+                <a href={meeting.recording_url} target="_blank" rel="noreferrer"
+                   className="inline-block font-mono text-[10px] uppercase tracking-widest text-ink border border-ink/30 px-2 py-1 hover:border-ink hover:bg-ink/5">
+                  ↗ Replay Fathom
+                </a>
+              )}
+              <button onClick={deleteMeeting}
+                className="font-mono text-[10px] uppercase tracking-widest border border-rust/40 text-rust px-2 py-1 hover:bg-rust hover:text-paper transition">
+                Supprimer ce point
+              </button>
+            </div>
           </div>
           <button onClick={onClose}
             className="shrink-0 w-9 h-9 border border-ink/30 hover:border-ink flex items-center justify-center font-mono text-lg leading-none">
@@ -145,9 +168,16 @@ export default function MeetingDrawer({ meeting, open, onClose, onUpdated }) {
           {/* Résumé */}
           {md && (
             <section>
-              <h3 className="font-mono text-[11px] uppercase tracking-[0.3em] text-ocre-d mb-3 pb-1 border-b border-ocre/30">
-                Résumé
-              </h3>
+              <div className="flex items-baseline justify-between mb-3 pb-1 border-b border-ocre/30">
+                <h3 className="font-mono text-[11px] uppercase tracking-[0.3em] text-ocre-d">
+                  Résumé {meeting.resume_en ? '(version originale anglais)' : ''}
+                </h3>
+                {meeting.resume_en && (
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-grey">
+                    traduction FR à venir
+                  </span>
+                )}
+              </div>
               <div className="prose prose-sm max-w-none text-ink" dangerouslySetInnerHTML={{ __html: htmlBlocks }} />
             </section>
           )}
