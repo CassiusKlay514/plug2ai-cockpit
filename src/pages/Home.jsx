@@ -1,46 +1,32 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase.js'
+import useExecutiveData from '../lib/useExecutiveData.js'
 import { formatEur, formatEurShort, formatNumber, formatDate } from '../lib/format.js'
 import StatTile from '../components/StatTile.jsx'
 import SectionTitle from '../components/SectionTitle.jsx'
-import CFONarrative from '../components/CFONarrative.jsx'
+import CxoCard from '../components/CxoCard.jsx'
 
 export default function Home({ onNavigate }) {
-  const [synth, setSynth]       = useState(null)
-  const [topClient, setTopCli]  = useState(null)
-  const [topCharges, setCharg]  = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState(null)
+  const { data, loading, error } = useExecutiveData()
+  const s = data?.synth
 
-  useEffect(() => {
-    let alive = true
-    async function load() {
-      setLoading(true)
-      try {
-        const [s, c, ch] = await Promise.all([
-          supabase.from('synthese_globale').select('*').single(),
-          supabase.from('ca_par_client').select('*').order('total_ht', { ascending: false, nullsFirst: false }).limit(1),
-          supabase.from('charges_par_categorie').select('*').limit(8),
-        ])
-        if (!alive) return
-        if (s.error) throw s.error
-        if (c.error) throw c.error
-        if (ch.error) throw ch.error
-        setSynth(s.data)
-        setTopCli(c.data?.[0] ?? null)
-        setCharg(ch.data ?? [])
-      } catch (e) {
-        setError(e.message ?? String(e))
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-    return () => { alive = false }
-  }, [])
+  // Stats étendues
+  const contacts = data?.contacts ?? []
+  const vagues = data?.vagues ?? []
+  const tools = data?.tools ?? []
+  const deals = data?.deals ?? []
+  const interactions = data?.interactions ?? []
+  const monthly = data?.saasMonthly ?? 0
+
+  const bounced = contacts.filter(c => c.email_valide === false).length
+  const wealth = contacts.filter(c => c.statut === 'PROSPECT_WEALTH' || c.statut === 'PROSPECT_CGP').length
+
+  // Top client pour le headline CFO
+  const topClient = data?.caParClient?.[0]
+  const concentration = topClient && s?.ca_ht_total
+    ? Math.round((Number(topClient.total_ht) / Number(s.ca_ht_total)) * 100)
+    : null
 
   return (
-    <main className="max-w-[1400px] mx-auto px-8 py-12 relative z-10">
+    <main className="max-w-[1500px] mx-auto px-6 py-12 relative z-10">
 
       {/* HERO */}
       <section className="mb-16">
@@ -49,116 +35,164 @@ export default function Home({ onNavigate }) {
             tableau de gouvernance · une page pour tout voir
           </p>
           <div className="font-mono text-[10px] uppercase tracking-widest text-grey">
-            mise à jour {synth?.derniere_op ? formatDate(synth.derniere_op) : '…'}
+            mise à jour {s?.derniere_op ? formatDate(s.derniere_op) : '…'}
           </div>
         </div>
-        <h1 className="font-title text-[88px] leading-[0.92] tracking-tight">
+        <h1 className="font-title text-[96px] leading-[0.9] tracking-tight">
           ÉTAT DU<br/>
           <span className="text-ocre-d">CABINET</span>
         </h1>
-        <p className="font-serif italic text-[17px] text-ink/80 mt-6 max-w-[700px]">
-          Plug2AI en chiffres réels, lus directement depuis la base bancaire et le CRM.
-          Cliquez sur une tuile pour entrer dans le détail.
+        <p className="font-serif italic text-[17px] text-ink/80 mt-6 max-w-[760px]">
+          Plug2AI en chiffres réels, lus depuis la base bancaire, le CRM et l'orchestrateur.
+          Cliquez une tuile pour son détail, ou consultez chaque CxO du Conseil exécutif plus bas.
         </p>
       </section>
 
       {error && <div className="font-mono text-sm text-rust mb-6">Erreur : {error}</div>}
 
-      {/* GRID stats principales */}
-      <section className="grid grid-cols-4 gap-4 mb-8">
-        <StatTile
-          roman="I"
-          label="Contacts"
-          value={synth ? formatNumber(synth.n_contacts) : '…'}
-          sub={synth ? `${synth.n_clients} clients · ${synth.n_prospects} prospects` : ''}
-          onClick={() => onNavigate('crm')}
-        />
-        <StatTile
-          roman="II"
-          label="Clients signés"
-          value={synth ? formatNumber(synth.n_clients) : '…'}
-          sub={synth ? `${synth.n_prospects_chauds} prospects chauds` : ''}
-          onClick={() => onNavigate('crm')}
-          accent
-        />
-        <StatTile
-          roman="III"
-          label="CA HT cumulé"
-          value={synth ? formatEurShort(synth.ca_ht_total) : '…'}
-          sub={synth ? `TTC ${formatEurShort(synth.ca_ttc_total)} · ${synth.n_factures} factures` : ''}
-          onClick={() => onNavigate('cfo')}
-        />
-        <StatTile
-          roman="IV"
-          label="Charges cumulées"
-          value={synth ? formatEurShort(synth.charges_ttc_total) : '…'}
-          sub={synth ? `dernière op. ${formatDate(synth.derniere_op)}` : ''}
-          onClick={() => onNavigate('cfo')}
-        />
+      {/* GRID 1 — pipeline commercial */}
+      <section className="mb-3">
+        <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-grey mb-3">
+          Pipeline commercial
+        </div>
+      </section>
+      <section className="grid grid-cols-4 gap-3 mb-8">
+        <StatTile roman="I" label="Contacts"
+          value={s ? formatNumber(s.n_contacts) : '…'}
+          sub={s ? `${s.n_clients} clients · ${s.n_prospects} prospects` : ''}
+          onClick={() => onNavigate('crm')} />
+        <StatTile roman="II" label="Clients signés"
+          value={s ? formatNumber(s.n_clients) : '…'}
+          sub={s ? `${s.n_prospects_chauds} prospects chauds` : ''}
+          onClick={() => onNavigate('crm')} accent />
+        <StatTile roman="III" label="Vagues de campagne"
+          value={formatNumber(vagues.length)}
+          sub="documentées dans la base"
+          onClick={() => onNavigate('cmo')} />
+        <StatTile roman="IV" label="Wealth · CGP"
+          value={formatNumber(wealth)}
+          sub="patrimoine · conformité"
+          onClick={() => onNavigate('cmo')} />
       </section>
 
-      <section className="grid grid-cols-4 gap-4 mb-16">
-        <StatTile
-          label="Résultat net estimé"
-          value={synth ? formatEurShort(synth.resultat_net_estime ?? 0) : '…'}
+      {/* GRID 2 — finance */}
+      <section className="mb-3">
+        <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-grey mb-3">
+          Performance financière
+        </div>
+      </section>
+      <section className="grid grid-cols-4 gap-3 mb-8">
+        <StatTile label="CA HT cumulé"
+          value={s ? formatEurShort(s.ca_ht_total) : '…'}
+          sub={s ? `TTC ${formatEurShort(s.ca_ttc_total)} · ${s.n_factures} f.` : ''}
+          onClick={() => onNavigate('cfo')} />
+        <StatTile label="Charges cumulées"
+          value={s ? formatEurShort(s.charges_ttc_total) : '…'}
+          sub={s ? `dernière op. ${formatDate(s.derniere_op)}` : ''}
+          onClick={() => onNavigate('cfo')} />
+        <StatTile label="Résultat net estimé"
+          value={s ? formatEurShort(s.resultat_net_estime ?? 0) : '…'}
           sub="CA HT − charges TTC"
-          accent={synth && Number(synth.resultat_net_estime) > 0}
-        />
-        <StatTile
-          label="Burn 30 derniers j."
-          value={synth ? formatEurShort(synth.charges_30j ?? 0) : '…'}
+          accent={s && Number(s.resultat_net_estime) > 0}
+          onClick={() => onNavigate('cfo')} />
+        <StatTile label="Burn 30 derniers j."
+          value={s ? formatEurShort(s.charges_30j ?? 0) : '…'}
           sub="rythme de dépense"
-        />
-        <StatTile
-          label="Encaissements 30 j."
-          value={synth ? formatEurShort(synth.ca_30j ?? 0) : '…'}
-          sub="virements et Stripe"
-        />
-        <StatTile
-          label="Activité depuis"
-          value={synth?.date_debut_activite
-            ? new Date(synth.date_debut_activite).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
+          onClick={() => onNavigate('cfo')} />
+      </section>
+
+      {/* GRID 3 — opérations & stack */}
+      <section className="mb-3">
+        <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-grey mb-3">
+          Opérations et infrastructure
+        </div>
+      </section>
+      <section className="grid grid-cols-4 gap-3 mb-16">
+        <StatTile label="Outils SaaS actifs"
+          value={formatNumber(tools.length)}
+          sub={`${formatEurShort(monthly)} / mois`}
+          onClick={() => onNavigate('cto')} />
+        <StatTile label="Interactions"
+          value={formatNumber(interactions.length)}
+          sub="mails, RDV, appels (à syncer)"
+          onClick={() => onNavigate('cmo')} />
+        <StatTile label="Deals en cours"
+          value={formatNumber(deals.length)}
+          sub="opportunités qualifiées"
+          onClick={() => onNavigate('coo')} />
+        <StatTile label="Activité depuis"
+          value={s?.date_debut_activite
+            ? new Date(s.date_debut_activite).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
             : '…'}
-          sub="premier mouvement bancaire"
-        />
+          sub="premier mouvement bancaire" />
       </section>
 
-      {/* MOT DU CFO */}
-      <section className="mb-16">
-        <CFONarrative s={synth} topClient={topClient} topCharges={topCharges} />
-      </section>
-
-      {/* RACCOURCIS */}
+      {/* CONSEIL EXECUTIF */}
       <section className="mb-12">
-        <SectionTitle num="01" label="Raccourcis" hint="entrer dans le détail" />
-        <div className="grid grid-cols-3 gap-4">
-          <button
-            onClick={() => onNavigate('crm')}
-            className="text-left p-6 border border-ink/20 hover:border-ink hover:bg-ink/5 transition-all group"
-          >
-            <div className="font-mono text-[10px] uppercase tracking-widest text-grey mb-2">Module I</div>
-            <div className="font-title text-[28px] leading-none mb-2 group-hover:text-ocre-d transition-colors">CRM</div>
-            <div className="font-serif italic text-[14px] text-ink2">
-              voir, filtrer, ajouter ou modifier les contacts du pipeline
-            </div>
-          </button>
-          <button
-            onClick={() => onNavigate('cfo')}
-            className="text-left p-6 border border-ink/20 hover:border-ink hover:bg-ink/5 transition-all group"
-          >
-            <div className="font-mono text-[10px] uppercase tracking-widest text-grey mb-2">Module II</div>
-            <div className="font-title text-[28px] leading-none mb-2 group-hover:text-ocre-d transition-colors">CFO</div>
-            <div className="font-serif italic text-[14px] text-ink2">
-              clients, fournisseurs, transactions et évolution mensuelle
-            </div>
-          </button>
-          <div className="text-left p-6 border border-dashed border-ink/20 opacity-50">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-grey mb-2">Modules à venir</div>
-            <div className="font-title text-[28px] leading-none mb-2">CMO · COO</div>
-            <div className="font-serif italic text-[14px] text-grey">
-              acquisition, opérations, automatisations
-            </div>
+        <div className="flex items-end justify-between mb-6 pb-3 border-b border-ink/30">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-ocre-d mb-1">§ 01</div>
+            <h2 className="font-title text-[42px] leading-none">CONSEIL EXÉCUTIF</h2>
+            <p className="font-serif italic text-[14px] text-grey mt-2">
+              chaque CxO lit la même donnée avec son angle, et donne son insight prioritaire
+            </p>
           </div>
+          <div className="font-mono text-[10px] uppercase tracking-widest text-grey text-right">
+            cliquer pour lire<br/>le mot complet
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-5">
+          <CxoCard
+            roman="II" code="CFO"
+            title="Finances"
+            tagline="cash · burn · risque"
+            headlineKind={concentration && concentration >= 50 ? 'alert' : 'success'}
+            headline={
+              s ? (
+                concentration >= 50
+                  ? `Résultat estimé ${formatEur((Number(s.ca_ht_total) || 0) - (Number(s.charges_ttc_total) || 0))} mais ${concentration}% du CA repose sur un seul client. Diversification urgente.`
+                  : `Marge brute saine de ${Math.round((1 - Number(s.charges_ttc_total) / Number(s.ca_ht_total)) * 100)} %, sans apport personnel. Continuer à élargir la base client.`
+              ) : '…'
+            }
+            onClick={() => onNavigate('cfo')}
+          />
+          <CxoCard
+            roman="III" code="CMO"
+            title="Acquisition"
+            tagline="funnel · campagnes · conversion"
+            headlineKind={bounced > 10 ? 'warn' : 'info'}
+            headline={
+              s ? (
+                `${vagues.length} vagues documentées sur ${s.n_contacts} contacts, ${bounced} emails bouncés à requalifier. Importer la campagne CGP récente et les 900+ conversations Codeur.`
+              ) : '…'
+            }
+            onClick={() => onNavigate('cmo')}
+          />
+          <CxoCard
+            roman="IV" code="COO"
+            title="Opérations"
+            tagline="projets · livraison · équipe"
+            headlineKind="info"
+            headline={
+              s ? (
+                `${s.n_clients} clients en production, ${s.n_factures} factures émises pour ${formatEur(Number(s.ca_ttc_total))} TTC. Aucun outil de kanban : risque d'opacité sur la marge réelle par projet.`
+              ) : '…'
+            }
+            onClick={() => onNavigate('coo')}
+          />
+          <CxoCard
+            roman="V" code="CTO"
+            title="Infrastructure"
+            tagline="stack · coûts · doublons"
+            headlineKind="warn"
+            headline={
+              tools.length > 0 ? (
+                `${tools.length} outils SaaS récurrents pour ${formatEur(monthly)}/mois. Doublons identifiés : ChatGPT vs Claude, Lovable vs Replit. Audit = 150-200 €/mois récupérables.`
+              ) : '…'
+            }
+            onClick={() => onNavigate('cto')}
+          />
         </div>
       </section>
 

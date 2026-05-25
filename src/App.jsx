@@ -3,6 +3,9 @@ import Header from './components/Header.jsx'
 import Home from './pages/Home.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import CFO from './pages/CFO.jsx'
+import CMO from './pages/CMO.jsx'
+import COO from './pages/COO.jsx'
+import CTO from './pages/CTO.jsx'
 
 export default function App() {
   const [page, setPage] = useState('home')
@@ -13,6 +16,9 @@ export default function App() {
       {page === 'home' && <Home onNavigate={setPage} />}
       {page === 'crm'  && <Dashboard />}
       {page === 'cfo'  && <CFO />}
+      {page === 'cmo'  && <CMO />}
+      {page === 'coo'  && <COO />}
+      {page === 'cto'  && <CTO />}
     </div>
   )
 }
