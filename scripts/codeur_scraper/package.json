@@ -1,0 +1,20 @@
+{
+  "name": "plug2ai-codeur-scout",
+  "version": "0.1.0",
+  "description": "Apify actor Playwright qui scrape codeur.com et ingère dans Supabase",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js",
+    "test": "node main.js --mode test",
+    "full": "node main.js --mode full",
+    "incremental": "node main.js --mode incremental"
+  },
+  "dependencies": {
+    "apify": "^3.2.0",
+    "crawlee": "^3.11.0",
+    "playwright": "^1.47.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
